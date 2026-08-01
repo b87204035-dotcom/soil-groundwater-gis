@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>土壤及地下水智慧調查平台</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+<style>
+:root{--bg:#eef3f4;--panel:#fff;--ink:#182327;--muted:#68777c;--brand:#176b68;--brand2:#0f4f4d;--warn:#fff4d9;--line:#d6e0e2}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;background:var(--bg);color:var(--ink)}
+header{height:64px;background:#132a30;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;position:sticky;top:0;z-index:1200}
+header h1{font-size:18px;margin:0}header small{opacity:.8}
+main{display:grid;grid-template-columns:330px 1fr 340px;gap:10px;padding:10px;height:calc(100vh - 64px)}
+.panel{background:var(--panel);border-radius:14px;padding:14px;overflow:auto;box-shadow:0 3px 15px #00000012}
+.mapwrap{position:relative;border-radius:14px;overflow:hidden;background:#ddd}#map{height:100%}
+h2{font-size:15px;margin:16px 0 8px}label{display:block;font-size:13px;margin-top:8px;color:#314247}
+input,textarea,select,button{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;margin-top:5px;font:inherit}
+button{background:var(--brand);color:#fff;border:0;font-weight:700;cursor:pointer}button.secondary{background:#e8f0f0;color:#193b3b}
+.tabs{display:flex;gap:6px}.tabs button{background:#e7efef;color:#17393a}.tabs button.active{background:var(--brand);color:#fff}
+.tab{display:none}.tab.active{display:block}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.status,.result{padding:11px;border-radius:10px;background:#f3f7f7;font-size:13px;line-height:1.5}.warning{background:var(--warn)}
+.metric{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.metric div{background:#f1f5f5;padding:10px;border-radius:9px;text-align:center}
+.small{font-size:12px;color:var(--muted)}.toolbar{position:absolute;z-index:900;left:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap}
+.toolbar button{width:auto;box-shadow:0 2px 8px #0004}.photo-preview{max-width:220px;max-height:180px;border-radius:8px}
+.badge{display:inline-block;padding:3px 7px;background:#e4eeee;border-radius:999px;margin:2px;font-size:12px}
+@media(max-width:900px){main{grid-template-columns:1fr;height:auto}.mapwrap{height:62vh}.panel{max-height:none}header small{display:none}}
+</style>
+</head>
+<body>
+<header><h1>土壤及地下水智慧調查平台</h1><small>地址／地號／GPS・航照／地籍・現勘照片・採樣布點</small></header>
+<main>
+<aside class="panel">
+<h2>查詢定位</h2>
+<div class="tabs"><button class="active" data-tab="address">地址</button><button data-tab="parcel">地號</button><button data-tab="gps">GPS</button></div>
+<div id="address" class="tab active"><label>完整地址</label><input id="addressInput" placeholder="例如：桃園市龜山區萬壽路二段"><button id="addressBtn">地址定位</button></div>
+<div id="parcel" class="tab"><div class="grid2"><input id="county" placeholder="縣市"><input id="district" placeholder="鄉鎮市區"><input id="section" placeholder="地段"><input id="parcelNo" placeholder="地號"></div><button id="parcelBtn">建立地號查詢</button><div class="status warning">目前可建立地號案件與定位中心；精準宗地定位需正式地籍 API。</div></div>
+<div id="gps" class="tab"><button id="gpsBtn">使用所在地 GPS</button></div>
+<h2>圖層</h2>
+<label><input type="checkbox" id="photoLayer"> 航照／正射影像</label>
+<label><input type="checkbox" id="cadastralLayer" checked> 地籍／段籍套繪</label>
+<label><input type="checkbox" id="sitesLayer" checked> 污染場址圖層</label>
+<h2>污染場址資料</h2>
+<input id="siteFile" type="file" accept=".json,.geojson,.csv"><div id="syncStatus" class="status">尚未載入場址資料。可匯入 GeoJSON／CSV。</div>
+</aside>
+<section class="mapwrap"><div id="map"></div><div class="toolbar"><button id="centerBtn">設為查詢中心</button><button id="sampleBtn">新增採樣點</button><button id="photoBtn">新增照片位置</button><button id="exportBtn">匯出 GeoJSON</button></div></section>
+<aside class="panel">
+<h2>案件資料</h2><input id="projectName" placeholder="案件名稱"><input id="clientName" placeholder="客戶／事業名稱"><textarea id="projectNote" rows="2" placeholder="案件備註"></textarea>
+<h2>查詢結果</h2><div class="result"><strong id="queryTitle">尚未查詢</strong><div id="queryCoords" class="small">--</div><div id="nearestSite" class="small">尚未分析鄰近污染場址</div></div>
+<h2>第 8、9 條公告事業初判</h2><input id="business" placeholder="事業／工廠名稱"><textarea id="keywords" rows="4" placeholder="輸入業別、製程、化學品，例如：電鍍、酸洗、鉻、鎳"></textarea><button id="assessBtn">執行初判</button><div id="assessment" class="status">尚未分析</div>
+<h2>現勘與採樣</h2><div class="grid2"><select id="sampleMedium"><option>土壤</option><option>地下水</option><option>土壤氣體</option><option>底泥</option></select><input id="sampleDepth" placeholder="深度，例如 0-0.5 m"></div><input id="sampleAnalysis" placeholder="分析項目，例如 VOCs、TPH、重金屬">
+<div class="metric"><div><b id="sampleCount">0</b><br><span class="small">採樣點</span></div><div><b id="photoCount">0</b><br><span class="small">照片點</span></div><div><b id="shapeCount">0</b><br><span class="small">圖形</span></div></div>
+<input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">
+<button class="secondary" id="saveBtn">儲存此案件到瀏覽器</button><button class="secondary" id="loadBtn">載入上次案件</button><button class="secondary" id="clearBtn">清除本案圖層</button>
+<h2>資料來源狀態</h2><div id="sourceStatus" class="status"><b>航照／地籍圖：</b>即時圖磚服務<br><b>污染場址：</b>尚未同步官方資料<br><b>第 8、9 條規則：</b>內建原型規則<br><b>本站最後更新：</b><span id="siteUpdated"></span></div>
+</aside>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script>
+const map=L.map('map').setView([23.7,120.95],7);const base=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap'}).addTo(map);const photo=L.tileLayer('https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}',{maxZoom:20,opacity:.95});const cadastral=L.tileLayer('https://wmts.nlsc.gov.tw/wmts/LANDSECT/default/GoogleMapsCompatible/{z}/{y}/{x}',{maxZoom:20,opacity:.72}).addTo(map);const sites=L.layerGroup().addTo(map),drawn=new L.FeatureGroup().addTo(map),samples=new L.FeatureGroup().addTo(map),photos=new L.FeatureGroup().addTo(map);map.addControl(new L.Control.Draw({edit:{featureGroup:drawn},draw:{marker:false,circlemarker:false}}));map.on(L.Draw.Event.CREATED,e=>{drawn.addLayer(e.layer);updateCounts()});let centerMarker,pendingPhotoLatLng;
+function setCenter(lat,lng,title){if(centerMarker)centerMarker.setLatLng([lat,lng]);else centerMarker=L.marker([lat,lng]).addTo(map);centerMarker.bindPopup(title||'查詢位置');map.setView([lat,lng],18);queryTitle.textContent=title||'查詢位置';queryCoords.textContent=`${lat.toFixed(6)}, ${lng.toFixed(6)}`}
+function updateCounts(){sampleCount.textContent=samples.getLayers().length;photoCount.textContent=photos.getLayers().length;shapeCount.textContent=drawn.getLayers().length}
+async function geocode(address){const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=tw&limit=1&q=${encodeURIComponent(address)}`,{headers:{'Accept-Language':'zh-TW'}});const rows=await r.json();if(!rows.length)throw new Error('找不到地址');return{lat:+rows[0].lat,lng:+rows[0].lon,label:rows[0].display_name}}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelector('#'+b.dataset.tab).classList.add('active')});
+addressBtn.onclick=async()=>{try{const q=await geocode(addressInput.value.trim());setCenter(q.lat,q.lng,q.label)}catch(e){alert(e.message)}};
+parcelBtn.onclick=()=>{const title=`${county.value}${district.value}${section.value}${parcelNo.value}地號`;queryTitle.textContent=title;queryCoords.textContent='已建立地號查詢案件；請用地圖中心定位或 GPS/地址定位'};
+gpsBtn.onclick=()=>navigator.geolocation.getCurrentPosition(p=>setCenter(p.coords.latitude,p.coords.longitude,'GPS 所在位置'),e=>alert(e.message),{enableHighAccuracy:true});photoLayer.onchange=e=>e.target.checked?photo.addTo(map):map.removeLayer(photo);cadastralLayer.onchange=e=>e.target.checked?cadastral.addTo(map):map.removeLayer(cadastral);sitesLayer.onchange=e=>e.target.checked?sites.addTo(map):map.removeLayer(sites);centerBtn.onclick=()=>{const c=map.getCenter();setCenter(c.lat,c.lng,'地圖中心位置')};
+sampleBtn.onclick=()=>{const c=map.getCenter(),code=`S${String(samples.getLayers().length+1).padStart(2,'0')}`;const medium=sampleMedium.value,depth=sampleDepth.value||'待定',analysis=sampleAnalysis.value||'待確認';const m=L.marker(c,{draggable:true});m.feature={type:'Feature',properties:{kind:'sample',code,medium,depth,analysis}};m.bindPopup(`<b>採樣點 ${code}</b><br>介質：${medium}<br>深度：${depth}<br>分析：${analysis}`);samples.addLayer(m);updateCounts()};
+photoBtn.onclick=()=>{pendingPhotoLatLng=map.getCenter();photoInput.click()};photoInput.onchange=e=>{const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{const html=`<b>現勘照片</b><br><img class="photo-preview" src="${reader.result}"><br><span class="small">${new Date().toLocaleString()}</span>`;photos.addLayer(L.circleMarker(pendingPhotoLatLng,{radius:8}).bindPopup(html));updateCounts()};reader.readAsDataURL(f);e.target.value=''};
+const rules=[{name:'金屬表面處理／電鍍',keys:['電鍍','表面處理','酸洗','鍍鉻','鍍鎳'],poll:['鉻','六價鉻','鎳','銅','鋅','鉛','鎘','氰化物'],analysis:['土壤重金屬','地下水重金屬','六價鉻','氰化物']},{name:'加油站／油品儲存',keys:['加油站','汽油','柴油','油槽','儲油'],poll:['TPH','BTEX','MTBE','PAHs'],analysis:['TPH','VOCs','PAHs']},{name:'乾洗業',keys:['乾洗','四氯乙烯','PCE'],poll:['PCE','TCE','DCE','VC'],analysis:['土壤氣體VOCs','土壤VOCs','地下水VOCs']},{name:'印刷／溶劑使用',keys:['印刷','油墨','溶劑','清洗劑'],poll:['VOCs','SVOCs','重金屬'],analysis:['VOCs','SVOCs','重金屬']},{name:'半導體／電子製造',keys:['半導體','晶圓','PCB','電路板','蝕刻'],poll:['VOCs','酸鹼','重金屬','含氟物質'],analysis:['VOCs','重金屬','氟鹽','依製程追加PFAS']}];
+assessBtn.onclick=()=>{const text=(business.value+' '+keywords.value).toLowerCase();const matched=rules.filter(r=>r.keys.some(k=>text.includes(k.toLowerCase())));if(!matched.length){assessment.innerHTML='資料不足，無法判定。請補充實際製程、原物料、化學品、許可及土地移轉／設立／停歇業情境。';return}const names=matched.map(x=>`<span class="badge">${x.name}</span>`).join('');const poll=[...new Set(matched.flatMap(x=>x.poll))].join('、');const ana=[...new Set(matched.flatMap(x=>x.analysis))].join('、');assessment.innerHTML=`<b>可能符合公告事業：</b><br>${names}<br><b>潛勢污染物：</b>${poll}<br><b>建議分析：</b>${ana}<br><span class="small">此為系統初判，不取代依法辦理的評估調查與主管機關認定。</span>`};
+function layerToFeature(l){const f=l.toGeoJSON();if(l.feature?.properties)f.properties={...(f.properties||{}),...l.feature.properties};return f}function allGeoJSON(){return{type:'FeatureCollection',features:[...drawn.getLayers(),...samples.getLayers(),...photos.getLayers()].map(layerToFeature)}}
+exportBtn.onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(allGeoJSON(),null,2)],{type:'application/geo+json'}));a.download='soil-gis-field-plan.geojson';a.click();URL.revokeObjectURL(a.href)};
+saveBtn.onclick=()=>{localStorage.setItem('soil_gis_case',JSON.stringify({projectName:projectName.value,clientName:clientName.value,projectNote:projectNote.value,title:queryTitle.textContent,coords:queryCoords.textContent,geojson:allGeoJSON()}));alert('已儲存到此瀏覽器')};
+loadBtn.onclick=()=>{const raw=localStorage.getItem('soil_gis_case');if(!raw)return alert('沒有儲存紀錄');const d=JSON.parse(raw);projectName.value=d.projectName||'';clientName.value=d.clientName||'';projectNote.value=d.projectNote||'';queryTitle.textContent=d.title;queryCoords.textContent=d.coords;L.geoJSON(d.geojson,{onEachFeature:(f,l)=>{if(f.properties?.kind==='sample'){l.feature=f;l.bindPopup(`<b>採樣點 ${f.properties.code||''}</b><br>介質：${f.properties.medium||''}<br>深度：${f.properties.depth||''}<br>分析：${f.properties.analysis||''}`);samples.addLayer(l)}else drawn.addLayer(l)}});updateCounts()};
+clearBtn.onclick=()=>{drawn.clearLayers();samples.clearLayers();photos.clearLayers();sites.clearLayers();updateCounts();nearestSite.textContent='尚未分析鄰近污染場址'};
+siteFile.onchange=async e=>{const f=e.target.files[0];if(!f)return;sites.clearLayers();if(f.name.toLowerCase().endsWith('.csv')){const text=await f.text();const rows=text.split(/\r?\n/).filter(Boolean);const head=rows.shift().split(',');const latI=head.findIndex(x=>/lat|緯度/i.test(x)),lngI=head.findIndex(x=>/lng|lon|經度/i.test(x)),nameI=head.findIndex(x=>/name|名稱|場址/i.test(x));let n=0;for(const row of rows){const c=row.split(',');const lat=+c[latI],lng=+c[lngI];if(Number.isFinite(lat)&&Number.isFinite(lng)){L.circleMarker([lat,lng],{radius:6}).bindPopup(c[nameI]||'污染場址').addTo(sites);n++}}syncStatus.textContent=`已載入 ${n} 筆 CSV 場址資料・${new Date().toLocaleString()}`}else{const gj=JSON.parse(await f.text());L.geoJSON(gj,{pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:6}),onEachFeature:(f,l)=>l.bindPopup(f.properties?.name||f.properties?.場址名稱||'污染場址')}).addTo(sites);syncStatus.textContent=`已載入 GeoJSON・${new Date().toLocaleString()}`}};
+siteUpdated.textContent=new Date().toLocaleString();updateCounts();
+</script>
+</body>
+</html>
