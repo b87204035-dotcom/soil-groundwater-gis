@@ -16,24 +16,36 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          path: source
 
-      - name: Prepare static site
+      - name: Checkout current published site
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: public
+
+      - name: Add latest enhancement scripts
         run: |
-          mkdir -p public
-          cp index.html public/index.html
-          cp enhancements-v5.js public/enhancements-v5.js
-          python3 - <<'PY'
+          if [ -f source/enhancements-v6.js ]; then
+            cp source/enhancements-v6.js public/enhancements-v6.js
+            python - <<'PY'
           from pathlib import Path
-          p = Path('public/index.html')
-          html = p.read_text(encoding='utf-8')
-          tag = '<script src="enhancements-v5.js?v=202608022221"></script>'
-          if tag not in html:
-              html = html.replace('</body>', f'{tag}\n</body>')
-          p.write_text(html, encoding='utf-8')
+          import re
+          path = Path('public/index.html')
+          html = path.read_text(encoding='utf-8')
+          tag = '<script src="enhancements-v6.js?v=202608030700"></script>'
+          if 'enhancements-v6.js' not in html:
+              html = html.replace('</body>', tag + '\n</body>')
+          else:
+              html = re.sub(r'<script src="enhancements-v6\.js[^\"]*"></script>', tag, html)
+          path.write_text(html, encoding='utf-8')
           PY
+          fi
           touch public/.nojekyll
+          rm -rf public/.git
 
       - name: Publish gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
