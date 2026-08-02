@@ -23,6 +23,16 @@ jobs:
         run: |
           mkdir -p public
           cp index.html public/index.html
+          cp enhancements-v5.js public/enhancements-v5.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('public/index.html')
+          html = p.read_text(encoding='utf-8')
+          tag = '<script src="enhancements-v5.js?v=202608022221"></script>'
+          if tag not in html:
+              html = html.replace('</body>', f'{tag}\n</body>')
+          p.write_text(html, encoding='utf-8')
+          PY
           touch public/.nojekyll
 
       - name: Publish gh-pages branch
