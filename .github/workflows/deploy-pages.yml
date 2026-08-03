@@ -29,21 +29,28 @@ jobs:
 
       - name: Add latest enhancement scripts
         run: |
-          if [ -f source/enhancements-v6.js ]; then
-            cp source/enhancements-v6.js public/enhancements-v6.js
-            python - <<'PY'
+          for file in enhancements-v5.js enhancements-v6.js enhancements-v7.js; do
+            if [ -f "source/$file" ]; then cp "source/$file" "public/$file"; fi
+          done
+          python - <<'PY'
           from pathlib import Path
           import re
           path = Path('public/index.html')
           html = path.read_text(encoding='utf-8')
-          tag = '<script src="enhancements-v6.js?v=202608030700"></script>'
-          if 'enhancements-v6.js' not in html:
-              html = html.replace('</body>', tag + '\n</body>')
-          else:
-              html = re.sub(r'<script src="enhancements-v6\.js[^\"]*"></script>', tag, html)
+          scripts = [
+              ('enhancements-v5.js', '202608022221'),
+              ('enhancements-v6.js', '202608030700'),
+              ('enhancements-v7.js', '202608032230'),
+          ]
+          for filename, version in scripts:
+              tag = f'<script src="{filename}?v={version}"></script>'
+              pattern = rf'<script src="{re.escape(filename)}[^\"]*"></script>'
+              if filename not in html:
+                  html = html.replace('</body>', tag + '\n</body>')
+              else:
+                  html = re.sub(pattern, tag, html)
           path.write_text(html, encoding='utf-8')
           PY
-          fi
           touch public/.nojekyll
           rm -rf public/.git
 
