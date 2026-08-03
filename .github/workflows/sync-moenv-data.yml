@@ -1,0 +1,56 @@
+name: Sync MOENV official data
+
+on:
+  schedule:
+    - cron: '15 20 * * *' # Taiwan 04:15 every day
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout published site
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: public
+
+      - name: Verify MOENV API key
+        env:
+          MOENV_API_KEY: ${{ secrets.MOENV_API_KEY }}
+        run: |
+          if [ -z "$MOENV_API_KEY" ]; then
+            echo "Repository Secret MOENV_API_KEY is missing." >&2
+            exit 1
+          fi
+
+      - name: Download and normalize official datasets
+        env:
+          MOENV_API_KEY: ${{ secrets.MOENV_API_KEY }}
+        run: |
+          python source/scripts/sync_moenv_data.py --output public/data
+
+      - name: Prepare published site
+        run: |
+          touch public/.nojekyll
+          rm -rf public/.git
+
+      - name: Publish synchronized data
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
+          force_orphan: true
