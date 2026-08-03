@@ -1,1 +1,1 @@
-Trigger MOENV sync after concurrency fix at 2026-08-04 06:18 Asia/Taipei.
+Retry MOENV sync with robust client at 2026-08-04 06:24 Asia/Taipei.
