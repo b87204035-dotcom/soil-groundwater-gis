@@ -39,12 +39,13 @@ jobs:
             echo "Repository Secret MOENV_API_KEY is missing." >&2
             exit 1
           fi
+          echo "MOENV_API_KEY exists; length=${#MOENV_API_KEY}"
 
       - name: Download and normalize official datasets
         env:
           MOENV_API_KEY: ${{ secrets.MOENV_API_KEY }}
         run: |
-          python source/scripts/sync_moenv_data.py --output public/data
+          python -u source/scripts/sync_moenv_data_v2.py public/data
 
       - name: Prepare published site
         run: |
