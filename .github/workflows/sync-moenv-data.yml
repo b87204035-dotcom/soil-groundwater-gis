@@ -1,6 +1,11 @@
 name: Sync MOENV official data
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-moenv-data.yml'
+      - 'sync-now.txt'
   schedule:
     - cron: '15 20 * * *' # Taiwan 04:15 every day
   workflow_dispatch:
