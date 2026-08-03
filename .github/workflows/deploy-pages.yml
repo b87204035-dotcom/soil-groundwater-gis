@@ -29,7 +29,7 @@ jobs:
 
       - name: Add latest enhancement scripts
         run: |
-          for file in enhancements-v5.js enhancements-v6.js enhancements-v7.js enhancements-v8.js enhancements-v9.js enhancements-v10.js; do
+          for file in enhancements-v5.js enhancements-v6.js enhancements-v7.js enhancements-v8.js enhancements-v9.js enhancements-v10.js enhancements-v11.js; do
             if [ -f "source/$file" ]; then cp "source/$file" "public/$file"; fi
           done
           python - <<'PY'
@@ -44,6 +44,7 @@ jobs:
               ('enhancements-v8.js', '202608032245'),
               ('enhancements-v9.js', '202608032240'),
               ('enhancements-v10.js', '202608032243'),
+              ('enhancements-v11.js', '202608040515'),
           ]
           for filename, version in scripts:
               tag = f'<script src="{filename}?v={version}"></script>'
@@ -52,6 +53,14 @@ jobs:
                   html = html.replace('</body>', tag + '\n</body>')
               else:
                   html = re.sub(pattern, tag, html)
+          preload = '<script>try{localStorage.removeItem("moenv_api_key")}catch(e){}</script>'
+          if preload not in html:
+              first_script = '<script src="enhancements-v5.js'
+              position = html.find(first_script)
+              if position >= 0:
+                  html = html[:position] + preload + '\n' + html[position:]
+              else:
+                  html = html.replace('</body>', preload + '\n</body>')
           path.write_text(html, encoding='utf-8')
           PY
           touch public/.nojekyll
