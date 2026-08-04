@@ -29,7 +29,7 @@ jobs:
 
       - name: Add latest enhancement scripts
         run: |
-          for file in enhancements-v5.js enhancements-v6.js enhancements-v7.js enhancements-v8.js enhancements-v9.js enhancements-v10.js enhancements-v11.js enhancements-v12.js; do
+          for file in enhancements-v5.js enhancements-v6.js enhancements-v7.js enhancements-v8.js enhancements-v9.js enhancements-v10.js enhancements-v11.js enhancements-v12.js enhancements-v13.js; do
             if [ -f "source/$file" ]; then cp "source/$file" "public/$file"; fi
           done
           python - <<'PY'
@@ -46,6 +46,7 @@ jobs:
               ('enhancements-v10.js', '202608032243'),
               ('enhancements-v11.js', '202608040515'),
               ('enhancements-v12.js', '202608050705'),
+              ('enhancements-v13.js', '202608050706'),
           ]
           for filename, version in scripts:
               tag = f'<script src="{filename}?v={version}"></script>'
