@@ -45,7 +45,7 @@ jobs:
               ('enhancements-v9.js', '202608032240'),
               ('enhancements-v10.js', '202608032243'),
               ('enhancements-v11.js', '202608040515'),
-              ('enhancements-v12.js', '202608050652'),
+              ('enhancements-v12.js', '202608050705'),
           ]
           for filename, version in scripts:
               tag = f'<script src="{filename}?v={version}"></script>'
