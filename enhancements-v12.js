@@ -1,5 +1,6 @@
 (() => {
   const byId = id => document.getElementById(id);
+  let defaultsApplied = false;
 
   function setLabelText(input, text) {
     const label = input?.closest('label');
@@ -23,7 +24,7 @@
     };
     statusBox.querySelectorAll('input').forEach(input => {
       setLabelText(input, labels[input.value] || input.value);
-      input.checked = false;
+      if (!defaultsApplied) input.checked = false;
     });
 
     const soil = mediaBox.querySelector('input[value="soil"]');
@@ -32,26 +33,17 @@
     const unknown = mediaBox.querySelector('input[value="unknown"]');
     setLabelText(soil, '土壤');
     setLabelText(groundwater, '地下水');
-    soil.checked = false;
-    groundwater.checked = false;
-    if (both) {
-      both.checked = false;
-      both.closest('label').style.display = 'none';
+    if (!defaultsApplied) {
+      if (soil) soil.checked = false;
+      if (groundwater) groundwater.checked = false;
+      if (both) both.checked = false;
+      if (unknown) unknown.checked = false;
     }
-    if (unknown) {
-      unknown.checked = false;
-      unknown.closest('label').style.display = 'none';
-    }
-
-    const syncBoth = () => {
-      if (both) both.checked = Boolean(soil?.checked || groundwater?.checked);
-      both?.dispatchEvent(new Event('change', { bubbles: true }));
-    };
-    soil?.addEventListener('change', syncBoth);
-    groundwater?.addEventListener('change', syncBoth);
+    if (both) both.closest('label').style.display = 'none';
+    if (unknown) unknown.closest('label').style.display = 'none';
 
     const summary = byId('siteFilterSummary');
-    if (summary) summary.textContent = '請先勾選場址狀態與污染介質，再顯示符合條件的污染場址。';
+    if (summary && !defaultsApplied) summary.textContent = '請先勾選場址狀態與污染介質，再顯示符合條件的污染場址。';
     return true;
   }
 
@@ -79,12 +71,18 @@
     return found;
   }
 
-  function applyDefaults() {
-    configureSiteFilters();
+  function applyDefaultsOnce() {
+    if (defaultsApplied) return;
+    const ready = configureSiteFilters() && byId('sitesLayer') && byId('wraWellLayerCheck') && byId('moenvWellLayerCheck') && byId('moenvSiteWellLayerCheck');
+    if (!ready) return;
     hideSitesByDefault();
     hideWellsByDefault();
+    defaultsApplied = true;
   }
 
-  applyDefaults();
-  [250, 800, 1800].forEach(delay => setTimeout(applyDefaults, delay));
+  const timer = setInterval(() => {
+    applyDefaultsOnce();
+    if (defaultsApplied) clearInterval(timer);
+  }, 150);
+  setTimeout(() => clearInterval(timer), 5000);
 })();
