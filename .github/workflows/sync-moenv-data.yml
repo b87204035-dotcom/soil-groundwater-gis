@@ -2,7 +2,7 @@ name: Sync MOENV official data
 
 on:
   schedule:
-    - cron: '15 20 * * *' # Taiwan 04:15 every day
+    - cron: '15 0 1 * *' # Taiwan 08:15 on the first day of every month
   workflow_dispatch:
   push:
     branches: [main]
